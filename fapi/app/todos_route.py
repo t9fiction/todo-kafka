@@ -33,7 +33,7 @@ async def create_todo(todo: Todo):
     await producer.start()  # Ensure the producer is started
     try:
         # produce message
-        await producer.send_and_wait('order', todoJSON)
+        await producer.send_and_wait('todo', todoJSON)
     finally:
         producer.stop()
         
