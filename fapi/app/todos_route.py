@@ -4,6 +4,8 @@ from sqlmodel import Session, select
 from app.engine_file import engine
 from app.models import Todo, TodoPost
 from fastapi import HTTPException
+from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
+import json
 
 todos_router = APIRouter(
     prefix="/todos",
@@ -22,7 +24,19 @@ def read_todos():
         return todos
 
 @todos_router.post("/")
-def create_todo(todo: Todo):
+async def create_todo(todo: Todo):
+    todo_dict = todo.dict()
+
+    todoJSON=json.dumps(todo_dict).encode("utf-8")
+    # producer=AIOKafkaProducer(bootstrap_servers=BOOTSTRAP_SERVER)
+    producer=AIOKafkaProducer(bootstrap_servers='broker:19092')
+    await producer.start()  # Ensure the producer is started
+    try:
+        # produce message
+        await producer.send_and_wait('order', todoJSON)
+    finally:
+        producer.stop()
+        
     with Session(engine) as session:
         todo_to_create = Todo.model_validate(todo)
         todo_id = session.exec(select(Todo).where(Todo.id == todo_to_create.id))
