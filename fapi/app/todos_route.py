@@ -4,9 +4,8 @@ from typing import Union, Optional, Annotated
 # from fastapi.exceptions import HTTPException
 from app.engine_file import engine
 from app.models import Todo, TodoPost
-from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
+from aiokafka import AIOKafkaProducer
 import json
-import asyncio
 # from fastapi import HTTPException
 
 
@@ -49,7 +48,7 @@ async def create_todo(todo: Todo, session: Annotated[Session, Depends(get_sessio
     # await producer.start()  # Ensure the producer is started
     # try:
         # produce message
-    await producer.send_and_wait('todo', todoJSON)
+    await producer.send_and_wait('todos', todoJSON)
     # finally:
         # producer.stop()
         
