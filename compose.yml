@@ -8,10 +8,58 @@ services:
       - '8000:8000'
     networks:
       - todo
-    environment:
-      - DATABASE_URL=postgresql://sohail.sohailishaq:Iap2zhSVLRg0@ep-restless-night-a56nuf5e.us-east-2.aws.neon.tech/todo-docker?sslmode=require
+    env_file:
+      - .env
+    # environment:
+    #   - DATABASE_URL=postgresql://sohail.sohailishaq:Iap2zhSVLRg0@ep-restless-night-a56nuf5e.us-east-2.aws.neon.tech/todo-docker?sslmode=require
       
+  broker:
+    image: apache/kafka:3.7.0
+    hostname: broker
+    container_name: broker
+    ports:
+      - '9092:9092'
+    # volumes:
+      # - ./createtopic.sh:/usr/local/bin/createtopic.sh
+    # entrypoint: ["sh", "-c", "/usr/local/bin/createtopic.sh"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT_HOST://localhost:9092,PLAINTEXT://broker:19092'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@broker:29093'
+      KAFKA_LISTENERS: 'CONTROLLER://:29093,PLAINTEXT_HOST://:9092,PLAINTEXT://:19092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      CLUSTER_ID: '4L6g3nShT-eMCtK--X86sw'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+    networks:
+      - todo
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: skafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: 'LK Cluster'
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'broker:19092'
+      DYNAMIC_CONFIG_ENABLED: "true"
+    depends_on:
+      - broker
+    networks:
+      - todo
+
 networks:
   todo:
-    name: todo-net
+    name: kafka
     driver: bridge
+
+# volumes:
+#   postgres_db:
+#     name: pg_db
+#     driver: local
