@@ -1,11 +1,18 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
+from typing import Union, Optional, Annotated
 # from fastapi.exceptions import HTTPException
 from app.engine_file import engine
 from app.models import Todo, TodoPost
-from fastapi import HTTPException
 from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
 import json
+import asyncio
+# from fastapi import HTTPException
+
+
+def get_session():
+    with Session(engine) as session:
+        yield session
 
 todos_router = APIRouter(
     prefix="/todos",
@@ -23,38 +30,47 @@ def read_todos():
         todos = session.exec(select(Todo)).all()
         return todos
 
+# Kafka Producer as a dependency
+async def get_kafka_producer():
+    producer = AIOKafkaProducer(bootstrap_servers='broker:19092')
+    await producer.start()
+    try:
+        yield producer
+    finally:
+        await producer.stop()
+
 @todos_router.post("/")
-async def create_todo(todo: Todo):
+async def create_todo(todo: Todo, session: Annotated[Session, Depends(get_session)], producer: Annotated[AIOKafkaProducer, Depends(get_kafka_producer)])->Todo:
     todo_dict = todo.dict()
 
     todoJSON=json.dumps(todo_dict).encode("utf-8")
     # producer=AIOKafkaProducer(bootstrap_servers=BOOTSTRAP_SERVER)
-    producer=AIOKafkaProducer(bootstrap_servers='broker:19092')
-    await producer.start()  # Ensure the producer is started
-    try:
+    # producer=AIOKafkaProducer(bootstrap_servers='broker:19092')
+    # await producer.start()  # Ensure the producer is started
+    # try:
         # produce message
-        await producer.send_and_wait('todo', todoJSON)
-    finally:
-        producer.stop()
+    await producer.send_and_wait('todo', todoJSON)
+    # finally:
+        # producer.stop()
         
-    with Session(engine) as session:
-        todo_to_create = Todo.model_validate(todo)
-        todo_id = session.exec(select(Todo).where(Todo.id == todo_to_create.id))
-        if todo_id.first() is not None:
-            raise HTTPException(status_code=404, detail="ID is not unique")
+    # with Session(engine) as session:
+    todo_to_create = Todo.model_validate(todo)
+    todo_id = session.exec(select(Todo).where(Todo.id == todo_to_create.id))
+    if todo_id.first() is not None:
+        raise HTTPException(status_code=404, detail="ID is not unique")
         
-        todo_query = select(Todo).where(Todo.name == todo_to_create.name)
-        todo_first = session.exec(todo_query).first()
-        print(todo_first)
+    todo_query = select(Todo).where(Todo.name == todo_to_create.name)
+    todo_first = session.exec(todo_query).first()
+    print(todo_first)
 
-        if todo_first is not None:
-            raise HTTPException(status_code=404, detail="Todo already exists.")
+    if todo_first is not None:
+        raise HTTPException(status_code=404, detail="Todo already exists.")
         
-        print(todo_to_create)
-        session.add(todo_to_create)
-        session.commit()
-        session.refresh(todo_to_create)
-        return todo_to_create
+    print(todo_to_create)
+    session.add(todo_to_create)
+    session.commit()
+    session.refresh(todo_to_create)
+    return todo_to_create
     
 @todos_router.put("/{id}")
 def update_todo(id, todo: TodoPost):
