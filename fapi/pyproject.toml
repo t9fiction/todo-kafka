@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "todo-app"
+version = "0.1.0"
+description = ""
+authors = ["t9fiction <sohail.sohailishaq@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+uvicorn = "^0.30.0"
+sqlmodel = "^0.0.18"
+psycopg = "^3.1.19"
+python-dotenv = "^1.0.1"
+fastapi = "^0.111.0"
+psycopg2 = "^2.9.9"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

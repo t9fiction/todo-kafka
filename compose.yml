@@ -1,0 +1,17 @@
+services:
+  api:
+    build:
+      context: ./fapi
+      dockerfile: Dockerfile.dev
+    container_name: todo-api
+    ports:
+      - '8000:8000'
+    networks:
+      - todo
+    environment:
+      - DATABASE_URL=postgresql://sohail.sohailishaq:Iap2zhSVLRg0@ep-restless-night-a56nuf5e.us-east-2.aws.neon.tech/todo-docker?sslmode=require
+      
+networks:
+  todo:
+    name: todo-net
+    driver: bridge
