@@ -8,8 +8,8 @@ import asyncio
 async def consume(topic, bootstrap):
     consumer = AIOKafkaConsumer(
         topic,
-        bootstrap_server=bootstrap,
-        group_id='mygroupid'
+        bootstrap_servers=bootstrap,
+        group_id='mygroup'
     )
     await consumer.start()
     try:
@@ -19,6 +19,7 @@ async def consume(topic, bootstrap):
     finally:
         # finally stop the consumer
         await consumer.stop()
+        
 # The first part of the function, before the yield, will
 # be executed before the application starts
 @asynccontextmanager
@@ -39,4 +40,4 @@ app.include_router(todos_router)
 
 @app.get("/")
 def read_root():
-    return {"App": "The TODO App Dockerized"}
+    return {"App": "The FASTAPI-TODO with Kafka"}
