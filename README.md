@@ -1,53 +1,82 @@
-# FastAPI Todo App
+# Todo Kafka
 
-This repository contains a FastAPI Todo application with a Dockerized environment. The app allows users to manage their todo lists efficiently.
+A FastAPI Todo API that publishes creation events to Apache Kafka, with a Kafka UI for monitoring. Runs entirely in Docker.
 
-## Features
+## Architecture
 
-- Create, Read, Update, and Delete (CRUD) operations for todos.
-- Dockerized environment for easy deployment.
-- Utilizes Neon Database on the cloud for data storage.
+```
+┌──────────┐    POST /todos    ┌──────────┐    produce    ┌────────┐
+│  Client  │ ────────────────> │  FastAPI  │ ───────────> │ Kafka  │
+└──────────┘                   │   Todo    │              │ Broker │
+                               │   API     │              └────────┘
+                               │           │              ┌────────┐
+                               │           │              │Kafka UI│
+                               └──────────┘              │:8080   │
+                                   │                      └────────┘
+                                   ▼
+                              ┌──────────┐
+                              │  Neon DB  │
+                              │(Postgres) │
+                              └──────────┘
+```
 
-## Installation
+## Services
 
-To run this application locally, follow these steps:
+| Service | Port | Description |
+|---------|------|-------------|
+| `api` | 8000 | FastAPI Todo CRUD + Kafka producer |
+| `broker` | 9092 | Apache Kafka 3.7.0 (KRaft mode) |
+| `kafka-ui` | 8080 | Kafka cluster management UI |
 
+## Quick start
 
-1. Clone this repository to your local machine.
-   ```bash
-   git clone <repository_url>
-   ```
+```bash
+# 1. Set your Neon DB connection string
+export DATABASE_URL="postgresql://user:pass@your-neon-host/todo-docker?sslmode=require"
 
-2. Navigate to the project directory.
-   ```bash
-   cd fastapi-todo-app
-   ```
+# 2. Start everything
+docker compose up -d
 
-3. Update the `DATABASE_URL` environment variable in the `compose.yml` file with your Neon Database connection string.
+# 3. API is live at http://localhost:8000
+#    Kafka UI at http://localhost:8080
+```
 
-4. Run the Docker container using Docker Compose.
-   ```bash
-   docker-compose up -d
-   ```
+## API endpoints
 
-5. Access the application in your web browser at `http://localhost:8000`.
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/` | Health check |
+| `GET` | `/todos` | List all todos |
+| `GET` | `/todos/{id}` | Get a todo |
+| `POST` | `/todos` | Create a todo (produces Kafka event) |
+| `PUT` | `/todos/{id}` | Update a todo |
+| `DELETE` | `/todos/{id}` | Delete a todo |
 
-## Usage
+### POST /todos
 
-- Create a new todo: Send a POST request to `/todos` with JSON payload containing todo details.
-- Get all todos: Send a GET request to `/todos`.
-- Get a specific todo: Send a GET request to `/todos/{id}` with the todo ID.
-- Update a todo: Send a PUT request to `/todos/{id}` with JSON payload containing updated todo details.
-- Delete a todo: Send a DELETE request to `/todos/{id}` with the todo ID.
+```json
+{
+  "name": "Learn Kafka",
+  "content": "Integrate Kafka with FastAPI"
+}
+```
 
-## Contributing
+Creates the todo in Neon DB and publishes a message to the `todos` Kafka topic. The consumer logs received messages to stdout.
 
-Contributions are welcome! Please feel free to fork this repository and submit pull requests to contribute new features, improvements, or bug fixes.
+## Environment variables
 
-## License
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | Neon PostgreSQL connection string |
+| `TEST_DATABASE_URL` | Test database connection string |
+| `BOOTSTRAP_SERVER` | Kafka broker address (default: `broker:19092`) |
+| `KAFKA_ORDER_TOPIC` | Topic name (default: `order`) |
 
-This project is licensed under the [MIT License](LICENSE).
+## Tech stack
 
----
-
-**Note:** Replace `<repository_url>` with the actual URL of your repository.
+- **FastAPI** — API framework
+- **SQLModel** — ORM (SQLAlchemy + Pydantic)
+- **aiokafka** — Async Kafka producer/consumer
+- **Apache Kafka 3.7** — Event streaming (KRaft mode, no Zookeeper)
+- **Neon** — Serverless PostgreSQL
+- **Docker Compose** — Orchestration
